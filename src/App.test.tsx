@@ -9,7 +9,7 @@ describe('StudyFlow first sprint features', () => {
 
     await user.type(screen.getByLabelText(/email/i), 'student@example.com');
     await user.type(screen.getByLabelText(/password/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /^log in$/i, exact: true }));
+    await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
     await user.type(screen.getByLabelText(/assignment title/i), 'Final Presentation');
     await user.selectOptions(screen.getByLabelText(/assignment course/i), 'CS320');
@@ -28,7 +28,7 @@ describe('StudyFlow first sprint features', () => {
 
     await user.type(screen.getByLabelText(/email/i), 'student@example.com');
     await user.type(screen.getByLabelText(/password/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /^log in$/i, exact: true }));
+    await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
     await user.selectOptions(screen.getByLabelText(/filter course/i), 'CS410');
     await user.selectOptions(screen.getByLabelText(/filter due date/i), 'Upcoming');
