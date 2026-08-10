@@ -8,6 +8,18 @@ type Assignment = {
   completed: boolean;
 };
 
+type StudyPlanItem = {
+  id: number;
+  day: string;
+  task: string;
+};
+
+type StudySession = {
+  id: number;
+  date: string;
+  duration: number;
+};
+
 type User = {
   name: string;
   email: string;
@@ -34,6 +46,12 @@ function App() {
   const [dueDate, setDueDate] = useState('');
   const [filterCourse, setFilterCourse] = useState('All');
   const [filterDueDate, setFilterDueDate] = useState('All');
+  const [studyDay, setStudyDay] = useState('Monday');
+  const [studyTask, setStudyTask] = useState('');
+  const [studyPlan, setStudyPlan] = useState<StudyPlanItem[]>([]);
+  const [studySessionDate, setStudySessionDate] = useState('');
+  const [studyDuration, setStudyDuration] = useState('');
+  const [studySessions, setStudySessions] = useState<StudySession[]>([]);
 
   const courseOptions = useMemo(() => ['All', ...courses], [courses]);
 
@@ -96,6 +114,41 @@ function App() {
   const deleteAssignment = (id: number) => {
     setAssignments((current) => current.filter((assignment) => assignment.id !== id));
   };
+
+  const addStudyPlanItem = (event: FormEvent) => {
+    event.preventDefault();
+    if (!studyTask) return;
+
+    setStudyPlan((current) => [...current, { id: Date.now(), day: studyDay, task: studyTask }]);
+    setStudyTask('');
+  };
+
+  const logStudySession = (event: FormEvent) => {
+    event.preventDefault();
+    if (!studySessionDate || !studyDuration) return;
+
+    setStudySessions((current) => [...current, { id: Date.now(), date: studySessionDate, duration: Number(studyDuration) }]);
+    setStudySessionDate('');
+    setStudyDuration('');
+  };
+
+  const streak = useMemo(() => {
+    if (studySessions.length === 0) return 0;
+
+    const uniqueDates = Array.from(new Set(studySessions.map((session) => session.date))).sort();
+    let currentStreak = 1;
+    for (let index = 1; index < uniqueDates.length; index += 1) {
+      const previous = new Date(uniqueDates[index - 1]);
+      const current = new Date(uniqueDates[index]);
+      const diffDays = Math.round((current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        currentStreak += 1;
+      } else {
+        break;
+      }
+    }
+    return currentStreak;
+  }, [studySessions]);
 
   if (!isAuthenticated) {
     return (
@@ -181,6 +234,56 @@ function App() {
         </label>
         <button type="submit">Add Assignment</button>
       </form>
+
+      <section className="card">
+        <h2>Study Plan</h2>
+        <form onSubmit={addStudyPlanItem} className="stack">
+          <label htmlFor="study-day">
+            Study day
+            <select id="study-day" value={studyDay} onChange={(event) => setStudyDay(event.target.value)}>
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="study-plan-task">
+            Study plan task
+            <input id="study-plan-task" value={studyTask} onChange={(event) => setStudyTask(event.target.value)} placeholder="Review algorithms" />
+          </label>
+          <button type="submit">Add study plan</button>
+        </form>
+        <ul className="assignment-list">
+          {studyPlan.map((item) => (
+            <li key={item.id} className="assignment-item">
+              <strong>{item.day}</strong>
+              <span>{item.task}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="card">
+        <h2>Study Sessions</h2>
+        <form onSubmit={logStudySession} className="stack">
+          <label htmlFor="study-date">
+            Study date
+            <input id="study-date" type="date" value={studySessionDate} onChange={(event) => setStudySessionDate(event.target.value)} />
+          </label>
+          <label htmlFor="study-duration">
+            Study duration
+            <input id="study-duration" type="number" min="1" value={studyDuration} onChange={(event) => setStudyDuration(event.target.value)} placeholder="45" />
+          </label>
+          <button type="submit">Log study session</button>
+        </form>
+        <div className="summary-box">
+          <p>Study streak: {streak} day(s)</p>
+          {studySessions.map((session) => (
+            <p key={session.id}>{session.duration} minutes</p>
+          ))}
+        </div>
+      </section>
 
       <section className="card">
         <h2>Assignments</h2>

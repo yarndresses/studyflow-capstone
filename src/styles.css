@@ -137,6 +137,14 @@ button.active {
   flex-wrap: wrap;
 }
 
+.summary-box {
+  margin-top: 0.75rem;
+  padding: 0.8rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
 @media (max-width: 640px) {
   .assignment-item {
     flex-direction: column;

@@ -35,4 +35,26 @@ describe('StudyFlow first sprint features', () => {
 
     expect(screen.getByText('Database Design Report')).toBeInTheDocument();
   });
+
+  it('supports study planning and session tracking', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText(/email/i), 'student@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /^log in$/i }));
+
+    await user.selectOptions(screen.getByLabelText(/study day/i), 'Tuesday');
+    await user.type(screen.getByLabelText(/study plan task/i), 'Review algorithms');
+    await user.click(screen.getByRole('button', { name: /add study plan/i }));
+
+    expect(screen.getByText('Review algorithms')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/study date/i), '2026-08-11');
+    await user.type(screen.getByLabelText(/study duration/i), '45');
+    await user.click(screen.getByRole('button', { name: /log study session/i }));
+
+    expect(screen.getByText(/study streak/i)).toBeInTheDocument();
+    expect(screen.getByText(/45 minutes/i)).toBeInTheDocument();
+  });
 });
