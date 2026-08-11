@@ -47,6 +47,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('default');
   const [profileName, setProfileName] = useState('Student');
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -93,6 +94,7 @@ function App() {
   const handleAuth = async (event: FormEvent) => {
     event.preventDefault();
     setAuthError('');
+    setFormError('');
     if (authMode === 'signup') {
       const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword, options: { data: { name: authName } } });
       if (error) setAuthError(error.message);
@@ -102,11 +104,27 @@ function App() {
     }
   };
 
+  const insertWithUserFallback = async (table: 'courses' | 'assignments' | 'study_plan_items' | 'study_sessions', payload: Record<string, unknown>) => {
+    if (session?.user.id) {
+      const withUser = { ...payload, user_id: session.user.id };
+      const { data, error } = await supabase.from(table).insert(withUser).select().single();
+      if (!error) return { data, error: null };
+      const fallback = await supabase.from(table).insert(payload).select().single();
+      return fallback;
+    }
+    return supabase.from(table).insert(payload).select().single();
+  };
+
   const addCourse = async (event: FormEvent) => {
     event.preventDefault();
+    setFormError('');
     const trimmed = courseInput.trim().toUpperCase();
     if (!trimmed || courses.includes(trimmed)) return;
-    await supabase.from('courses').insert({ name: trimmed });
+    const { error } = await insertWithUserFallback('courses', { name: trimmed });
+    if (error) {
+      setFormError(`Couldn't add course: ${error.message}`);
+      return;
+    }
     setCourses((c) => [...c, trimmed]);
     setCourse(trimmed);
     setCourseInput('');
@@ -114,11 +132,14 @@ function App() {
 
   const addAssignment = async (event: FormEvent) => {
     event.preventDefault();
+    setFormError('');
     if (!title || !course || !dueDate) return;
-    const { data } = await supabase.from('assignments').insert({ title, course, due_date: dueDate, completed: false }).select().single();
-    if (data) {
-      setAssignments((current) => [{ id: data.id as string, title: data.title as string, course: data.course as string, dueDate: data.due_date as string, completed: false }, ...current]);
+    const { data, error } = await insertWithUserFallback('assignments', { title, course, due_date: dueDate, completed: false });
+    if (error || !data) {
+      setFormError(`Couldn't add assignment: ${error?.message ?? 'Please try again.'}`);
+      return;
     }
+    setAssignments((current) => [{ id: data.id as string, title: data.title as string, course: data.course as string, dueDate: data.due_date as string, completed: false }, ...current]);
     setTitle('');
     setDueDate('');
   };
@@ -135,17 +156,27 @@ function App() {
 
   const addStudyPlanItem = async (event: FormEvent) => {
     event.preventDefault();
+    setFormError('');
     if (!studyTask) return;
-    const { data } = await supabase.from('study_plan_items').insert({ day: studyDay, task: studyTask }).select().single();
-    if (data) setStudyPlan((current) => [...current, { id: data.id as string, day: data.day as string, task: data.task as string }]);
+    const { data, error } = await insertWithUserFallback('study_plan_items', { day: studyDay, task: studyTask });
+    if (error || !data) {
+      setFormError(`Couldn't add study plan item: ${error?.message ?? 'Please try again.'}`);
+      return;
+    }
+    setStudyPlan((current) => [...current, { id: data.id as string, day: data.day as string, task: data.task as string }]);
     setStudyTask('');
   };
 
   const logStudySession = async (event: FormEvent) => {
     event.preventDefault();
+    setFormError('');
     if (!studySessionDate || !studyDuration) return;
-    const { data } = await supabase.from('study_sessions').insert({ date: studySessionDate, duration: Number(studyDuration) }).select().single();
-    if (data) setStudySessions((current) => [{ id: data.id as string, date: data.date as string, duration: data.duration as number }, ...current]);
+    const { data, error } = await insertWithUserFallback('study_sessions', { date: studySessionDate, duration: Number(studyDuration) });
+    if (error || !data) {
+      setFormError(`Couldn't log study session: ${error?.message ?? 'Please try again.'}`);
+      return;
+    }
+    setStudySessions((current) => [{ id: data.id as string, date: data.date as string, duration: data.duration as number }, ...current]);
     setStudySessionDate('');
     setStudyDuration('');
   };
@@ -247,6 +278,7 @@ function App() {
 
       <form onSubmit={addAssignment} className="card form-card">
         <h2>Add Assignment</h2>
+        {formError && <p className="error">{formError}</p>}
         <label htmlFor="assignment-title">Assignment title<input id="assignment-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Assignment title" /></label>
         <label htmlFor="assignment-course">Assignment course
           <select id="assignment-course" value={course} onChange={(e) => setCourse(e.target.value)}>

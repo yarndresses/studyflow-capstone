@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import App from './App';
 
 const authCallbacks = vi.hoisted(() => ({ change: (_event: string, _session: unknown) => {} }));
+const mockState = vi.hoisted(() => ({ assignmentInsertError: false }));
 
 const mockSession = vi.hoisted(() => ({
   user: { id: 'u1', email: 'student@example.com', user_metadata: { name: 'Student' } },
@@ -37,7 +38,11 @@ vi.mock('./supabase', () => {
         }),
         insert: (data: Record<string, unknown>) => ({
           select: () => ({
-            single: () => Promise.resolve({ data: { id: `mock-${Date.now()}`, ...data }, error: null }),
+            single: () => Promise.resolve(
+              table === 'assignments' && mockState.assignmentInsertError
+                ? { data: null, error: { message: 'Unable to save assignment' } }
+                : { data: { id: `mock-${Date.now()}`, ...data }, error: null }
+            ),
             order: () => Promise.resolve({ data: [], error: null }),
           }),
         }),
@@ -57,6 +62,10 @@ async function loginUser(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('StudyFlow features', () => {
+  beforeEach(() => {
+    mockState.assignmentInsertError = false;
+  });
+
   it('allows a user to add and complete an assignment', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -71,6 +80,20 @@ describe('StudyFlow features', () => {
 
     await user.click(screen.getAllByRole('button', { name: /complete/i })[0]);
     expect(screen.getAllByText('Undo').length).toBeGreaterThan(0);
+  });
+
+  it('shows a helpful message when assignment creation fails', async () => {
+    mockState.assignmentInsertError = true;
+    const user = userEvent.setup();
+    render(<App />);
+    await loginUser(user);
+
+    await user.type(screen.getByLabelText(/assignment title/i), 'Final Presentation');
+    await user.selectOptions(screen.getByLabelText(/assignment course/i), 'CS320');
+    await user.type(screen.getByLabelText(/assignment due date/i), '2026-08-20');
+    await user.click(screen.getByRole('button', { name: /add assignment/i }));
+
+    expect(await screen.findByText(/couldn't add assignment/i)).toBeInTheDocument();
   });
 
   it('filters assignments by course and date', async () => {

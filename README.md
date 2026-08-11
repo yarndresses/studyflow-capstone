@@ -25,7 +25,9 @@ This project follows an Agile-style development approach using short, iterative 
 - Sprint 2: study planning and progress tracking enhancements
 - Sprint 3: analytics, polish, and refinement
 
-The backlog was organised using user stories and acceptance criteria, which makes the development process easier to manage for a solo developer while still following professional software engineering practices.
+The backlog was organised using user stories and acceptance criteria, which makes the development process easier to manage for a solo developer while still following professional software engineering practices. 
+
+The Trello board can be found here: https://trello.com/invite/b/6a7a3221e12380ca57e9bfd2/ATTI26e771090bbcaa148698c28866857b160E7120E4/my-trello-board .
 
 ## Collaborative and Engineering Tools Used
 
