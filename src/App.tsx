@@ -83,7 +83,7 @@ function App() {
     if (sessionsRes.data) {
       setStudySessions(sessionsRes.data.map((r) => ({ id: r.id as string, date: r.date as string, duration: r.duration as number })));
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (session) {
@@ -106,15 +106,11 @@ function App() {
     }
   };
 
-  const insertWithUserFallback = async (table: 'courses' | 'assignments' | 'study_plan_items' | 'study_sessions', payload: Record<string, unknown>) => {
-    if (session?.user.id) {
-      const withUser = { ...payload, user_id: session.user.id };
-      const { data, error } = await supabase.from(table).insert(withUser).select().single();
-      if (!error) return { data, error: null };
-      const fallback = await supabase.from(table).insert(payload).select().single();
-      return fallback;
+  const insertWithUser = async (table: 'courses' | 'assignments' | 'study_plan_items' | 'study_sessions', payload: Record<string, unknown>) => {
+    if (!session?.user.id) {
+      return { data: null, error: { message: 'You must be signed in to save this item.' } };
     }
-    return supabase.from(table).insert(payload).select().single();
+    return supabase.from(table).insert({ ...payload, user_id: session.user.id }).select().single();
   };
 
   const addCourse = async (event: FormEvent) => {
@@ -122,7 +118,7 @@ function App() {
     setFormError('');
     const trimmed = courseInput.trim().toUpperCase();
     if (!trimmed || courses.includes(trimmed)) return;
-    const { error } = await insertWithUserFallback('courses', { name: trimmed });
+    const { error } = await insertWithUser('courses', { name: trimmed });
     if (error) {
       setFormError(`Couldn't add course: ${error.message}`);
       return;
@@ -136,7 +132,7 @@ function App() {
     event.preventDefault();
     setFormError('');
     if (!title || !course || !dueDate) return;
-    const { data, error } = await insertWithUserFallback('assignments', { title, course, due_date: dueDate, completed: false });
+    const { data, error } = await insertWithUser('assignments', { title, course, due_date: dueDate, completed: false });
     if (error || !data) {
       setFormError(`Couldn't add assignment: ${error?.message ?? 'Please try again.'}`);
       return;
@@ -160,7 +156,7 @@ function App() {
     event.preventDefault();
     setFormError('');
     if (!studyTask) return;
-    const { data, error } = await insertWithUserFallback('study_plan_items', { day: studyDay, task: studyTask });
+    const { data, error } = await insertWithUser('study_plan_items', { day: studyDay, task: studyTask });
     if (error || !data) {
       setFormError(`Couldn't add study plan item: ${error?.message ?? 'Please try again.'}`);
       return;
@@ -173,7 +169,7 @@ function App() {
     event.preventDefault();
     setFormError('');
     if (!studySessionDate || !studyDuration) return;
-    const { data, error } = await insertWithUserFallback('study_sessions', { date: studySessionDate, duration: Number(studyDuration) });
+    const { data, error } = await insertWithUser('study_sessions', { date: studySessionDate, duration: Number(studyDuration) });
     if (error || !data) {
       setFormError(`Couldn't log study session: ${error?.message ?? 'Please try again.'}`);
       return;
@@ -186,6 +182,10 @@ function App() {
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
     await supabase.auth.updateUser({ data: { name: profileName } });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
   const courseOptions = useMemo(() => ['All', ...courses], [courses]);
@@ -247,7 +247,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header><h1>StudyFlow</h1><p>Welcome back, {profileName}.</p></header>
+      <header>
+        <div>
+          <h1>StudyFlow</h1>
+          <p>Welcome back, {profileName}.</p>
+        </div>
+        <button type="button" className="secondary" onClick={handleLogout}>Log out</button>
+      </header>
 
       <section className="card">
         <h2>Student Name</h2>

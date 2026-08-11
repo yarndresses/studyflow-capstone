@@ -29,26 +29,35 @@ vi.mock('./supabase', () => {
           authCallbacks.change('SIGNED_IN', mockSession);
           return { data: { session: mockSession }, error: null };
         },
+        signOut: async () => {
+          authCallbacks.change('SIGNED_OUT', null);
+          return { error: null };
+        },
         updateUser: async () => ({ data: {}, error: null }),
       },
-      from: (table: string) => ({
-        select: () => ({
+      from: (table: string) => {
+        const queryWithUserFilter = {
+          eq: () => queryWithUserFilter,
           order: () => Promise.resolve({ data: table === 'courses' ? mockCourses : table === 'assignments' ? mockAssignments : [], error: null }),
           single: () => Promise.resolve({ data: null, error: null }),
-        }),
-        insert: (data: Record<string, unknown>) => ({
-          select: () => ({
-            single: () => Promise.resolve(
-              table === 'assignments' && mockState.assignmentInsertError
-                ? { data: null, error: { message: 'Unable to save assignment' } }
-                : { data: { id: `mock-${Date.now()}`, ...data }, error: null }
-            ),
-            order: () => Promise.resolve({ data: [], error: null }),
+        };
+
+        return {
+          select: () => queryWithUserFilter,
+          insert: (data: Record<string, unknown>) => ({
+            select: () => ({
+              single: () => Promise.resolve(
+                table === 'assignments' && mockState.assignmentInsertError
+                  ? { data: null, error: { message: 'Unable to save assignment' } }
+                  : { data: { id: `mock-${Date.now()}`, ...data }, error: null }
+              ),
+              order: () => Promise.resolve({ data: [], error: null }),
+            }),
           }),
-        }),
-        update: () => ({ eq: () => Promise.resolve({ error: null }) }),
-        delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
-      }),
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      },
     },
   };
 });
@@ -59,6 +68,7 @@ async function loginUser(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/password/i), 'password123');
   await user.click(screen.getByRole('button', { name: /^log in$/i }));
   await screen.findByText(/dashboard/i);
+  await screen.findByText('Database Design Report');
 }
 
 describe('StudyFlow features', () => {
@@ -123,6 +133,16 @@ describe('StudyFlow features', () => {
 
     expect(screen.getByText('Study streak: 1 day(s)')).toBeInTheDocument();
     expect(screen.getAllByText(/45 minutes/i).length).toBeGreaterThan(0);
+  });
+
+  it('logs the user out from the dashboard', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await loginUser(user);
+
+    await user.click(screen.getByRole('button', { name: /log out/i }));
+
+    expect(await screen.findByRole('button', { name: /^log in$/i })).toBeInTheDocument();
   });
 
   it('shows dashboard insights, supports search and sorting, and updates the profile', async () => {
