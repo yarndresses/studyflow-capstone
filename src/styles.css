@@ -137,12 +137,24 @@ button.active {
   flex-wrap: wrap;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
 .summary-box {
   margin-top: 0.75rem;
   padding: 0.8rem;
   border-radius: 10px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
+}
+
+.summary-box p {
+  margin: 0.3rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 @media (max-width: 640px) {

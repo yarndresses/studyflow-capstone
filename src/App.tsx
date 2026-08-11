@@ -52,11 +52,14 @@ function App() {
   const [studySessionDate, setStudySessionDate] = useState('');
   const [studyDuration, setStudyDuration] = useState('');
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState('default');
+  const [profileName, setProfileName] = useState('Student');
 
   const courseOptions = useMemo(() => ['All', ...courses], [courses]);
 
   const filteredAssignments = useMemo(() => {
-    return assignments.filter((assignment) => {
+    const base = assignments.filter((assignment) => {
       const matchesCourse = filterCourse === 'All' || assignment.course === filterCourse;
       const today = new Date();
       const due = new Date(assignment.dueDate);
@@ -64,9 +67,16 @@ function App() {
         filterDueDate === 'All' ||
         (filterDueDate === 'Overdue' && due < today) ||
         (filterDueDate === 'Upcoming' && due >= today);
-      return matchesCourse && matchesDueDate;
+      const matchesSearch = assignment.title.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCourse && matchesDueDate && matchesSearch;
     });
-  }, [assignments, filterCourse, filterDueDate]);
+
+    if (sortOption === 'due-date') {
+      return [...base].sort((first, second) => new Date(first.dueDate).getTime() - new Date(second.dueDate).getTime());
+    }
+
+    return base;
+  }, [assignments, filterCourse, filterDueDate, searchTerm, sortOption]);
 
   const handleAuth = (event: FormEvent) => {
     event.preventDefault();
@@ -115,6 +125,11 @@ function App() {
     setAssignments((current) => current.filter((assignment) => assignment.id !== id));
   };
 
+  const saveProfile = (event: FormEvent) => {
+    event.preventDefault();
+    setUser((current) => (current ? { ...current, name: profileName } : current));
+  };
+
   const addStudyPlanItem = (event: FormEvent) => {
     event.preventDefault();
     if (!studyTask) return;
@@ -131,6 +146,9 @@ function App() {
     setStudySessionDate('');
     setStudyDuration('');
   };
+
+  const completedCount = useMemo(() => assignments.filter((assignment) => assignment.completed).length, [assignments]);
+  const totalAssignments = assignments.length;
 
   const streak = useMemo(() => {
     if (studySessions.length === 0) return 0;
@@ -191,8 +209,30 @@ function App() {
     <div className="app-shell">
       <header>
         <h1>StudyFlow</h1>
-        <p>Welcome back, {user?.name ?? 'Student'}.</p>
+        <p>Welcome back, {user?.name ?? profileName}.</p>
       </header>
+
+      <section className="card">
+        <h2>Dashboard</h2>
+        <div className="summary-grid">
+          <div className="summary-box">
+            <strong>Total assignments</strong>
+            <p>{totalAssignments}</p>
+          </div>
+          <div className="summary-box">
+            <strong>Completed assignments</strong>
+            <p>{completedCount}</p>
+          </div>
+          <div className="summary-box">
+            <strong>Study streak</strong>
+            <p>{streak} day(s)</p>
+          </div>
+          <div className="summary-box">
+            <strong>Study time logged</strong>
+            <p>{studySessions.reduce((total, session) => total + session.duration, 0)} minutes</p>
+          </div>
+        </div>
+      </section>
 
       <section className="card">
         <h2>Add a course</h2>
@@ -286,8 +326,30 @@ function App() {
       </section>
 
       <section className="card">
+        <h2>Profile</h2>
+        <form onSubmit={saveProfile} className="stack">
+          <label htmlFor="profile-name">
+            Profile name
+            <input id="profile-name" value={profileName} onChange={(event) => setProfileName(event.target.value)} />
+          </label>
+          <button type="submit">Save profile</button>
+        </form>
+      </section>
+
+      <section className="card">
         <h2>Assignments</h2>
         <div className="filters">
+          <label htmlFor="search-tasks">
+            Search tasks
+            <input id="search-tasks" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search tasks" />
+          </label>
+          <label htmlFor="sort-tasks">
+            Sort tasks
+            <select id="sort-tasks" value={sortOption} onChange={(event) => setSortOption(event.target.value)}>
+              <option value="default">Default</option>
+              <option value="due-date">Due date</option>
+            </select>
+          </label>
           <label htmlFor="filter-course">
             Filter course
             <select id="filter-course" value={filterCourse} onChange={(event) => setFilterCourse(event.target.value)}>
