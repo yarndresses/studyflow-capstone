@@ -61,11 +61,13 @@ function App() {
   }, []);
 
   const loadData = useCallback(async () => {
+    if (!session?.user.id) return;
+    const userId = session.user.id;
     const [coursesRes, assignmentsRes, planRes, sessionsRes] = await Promise.all([
-      supabase.from('courses').select('name').order('created_at'),
-      supabase.from('assignments').select('*').order('created_at', { ascending: false }),
-      supabase.from('study_plan_items').select('*').order('created_at'),
-      supabase.from('study_sessions').select('*').order('created_at', { ascending: false }),
+      supabase.from('courses').select('name').eq('user_id', userId).order('created_at'),
+      supabase.from('assignments').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      supabase.from('study_plan_items').select('*').eq('user_id', userId).order('created_at'),
+      supabase.from('study_sessions').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     ]);
     if (coursesRes.data) {
       const names = coursesRes.data.map((r) => r.name as string);
