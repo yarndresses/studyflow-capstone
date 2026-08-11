@@ -3,4 +3,5 @@ dist/
 .vite/
 coverage/
 .env
+.env.local
 .DS_Store
