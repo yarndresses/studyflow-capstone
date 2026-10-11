@@ -322,7 +322,7 @@ function App() {
 
       <section className="card">
         <h2>Assignments</h2>
-        <form onSubmit={addAssignment} className="stack">
+        <form onSubmit={addAssignment} className="stack assignment-form">
           {formError && <p className="error">{formError}</p>}
           <label htmlFor="assignment-title">Assignment title<input id="assignment-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Assignment title" /></label>
           <label htmlFor="assignment-course">Assignment course
