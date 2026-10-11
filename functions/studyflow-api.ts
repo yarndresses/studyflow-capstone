@@ -20,6 +20,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
 attachDatabasePool(pool);
 
 const supabaseUrl = process.env.SUPABASE_URL!.replace(/\/$/, '');
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
 const allowedOrigins = new Set(process.env.ALLOWED_ORIGINS!.split(',').map((origin) => origin.trim()));
 const app = new Hono<Bindings>();
@@ -62,6 +63,28 @@ app.use('*', async (context, next) => {
 });
 
 app.get('/health', (context) => context.json({ ok: true }));
+
+app.delete('/account', async (context) => {
+  const userId = context.get('userId');
+  const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: supabaseServiceRoleKey,
+      Authorization: `Bearer ${supabaseServiceRoleKey}`,
+    },
+  });
+  if (!response.ok) {
+    return context.json({ error: 'Could not delete your account.' }, 502);
+  }
+
+  await Promise.all([
+    pool.query('delete from public.courses where user_id = $1', [userId]),
+    pool.query('delete from public.assignments where user_id = $1', [userId]),
+    pool.query('delete from public.study_plan_items where user_id = $1', [userId]),
+    pool.query('delete from public.study_sessions where user_id = $1', [userId]),
+  ]);
+  return context.body(null, 204);
+});
 
 app.get('/courses', async (context) => {
   const result = await pool.query(

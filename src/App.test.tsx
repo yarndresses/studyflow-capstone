@@ -174,6 +174,19 @@ describe('StudyFlow features', () => {
     expect(await screen.findByRole('button', { name: /^log in$/i })).toBeInTheDocument();
   });
 
+  it('deletes the account after confirmation', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<App />);
+    await loginUser(user);
+
+    await user.click(screen.getByRole('button', { name: /delete account/i }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(await screen.findByRole('button', { name: /^log in$/i })).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+
   it('shows dashboard insights, supports search and sorting, and updates the profile', async () => {
     const user = userEvent.setup();
     render(<App />);

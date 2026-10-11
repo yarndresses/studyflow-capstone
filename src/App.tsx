@@ -49,6 +49,7 @@ function App() {
   const [sortOption, setSortOption] = useState('default');
   const [profileName, setProfileName] = useState('Student');
   const [formError, setFormError] = useState('');
+  const [accountError, setAccountError] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -193,6 +194,17 @@ function App() {
     await supabase.auth.signOut();
   };
 
+  const handleDeleteAccount = async () => {
+    if (!session || !window.confirm('Delete your account and all StudyFlow data? This cannot be undone.')) return;
+    setAccountError('');
+    const { error } = await apiRequest(session, 'account', { method: 'DELETE' });
+    if (error) {
+      setAccountError(error.message);
+      return;
+    }
+    await supabase.auth.signOut();
+  };
+
   const courseOptions = useMemo(() => ['All', ...courses], [courses]);
 
   const filteredAssignments = useMemo(() => {
@@ -268,6 +280,12 @@ function App() {
           </label>
           <button type="submit">Change Name</button>
         </form>
+      </section>
+
+      <section className="card">
+        <h2>Account</h2>
+        {accountError && <p className="error">{accountError}</p>}
+        <button type="button" className="secondary" onClick={handleDeleteAccount}>Delete account</button>
       </section>
 
       <section className="card">
