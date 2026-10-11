@@ -289,19 +289,6 @@ function App() {
         <div className="pill-list">{courses.map((n) => <span key={n} className="pill">{n}</span>)}</div>
       </section>
 
-      <form onSubmit={addAssignment} className="card form-card">
-        <h2>Add Assignment</h2>
-        {formError && <p className="error">{formError}</p>}
-        <label htmlFor="assignment-title">Assignment title<input id="assignment-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Assignment title" /></label>
-        <label htmlFor="assignment-course">Assignment course
-          <select id="assignment-course" value={course} onChange={(e) => setCourse(e.target.value)}>
-            {courses.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
-        <label htmlFor="assignment-due-date">Assignment due date<input id="assignment-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
-        <button type="submit">Add Assignment</button>
-      </form>
-
       <section className="card">
         <h2>Study Plan</h2>
         <form onSubmit={addStudyPlanItem} className="stack">
@@ -335,6 +322,17 @@ function App() {
 
       <section className="card">
         <h2>Assignments</h2>
+        <form onSubmit={addAssignment} className="stack">
+          {formError && <p className="error">{formError}</p>}
+          <label htmlFor="assignment-title">Assignment title<input id="assignment-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Assignment title" /></label>
+          <label htmlFor="assignment-course">Assignment course
+            <select id="assignment-course" value={course} onChange={(e) => setCourse(e.target.value)}>
+              {courses.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          <label htmlFor="assignment-due-date">Assignment due date<input id="assignment-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
+          <button type="submit">Add Assignment</button>
+        </form>
         <div className="filters">
           <label htmlFor="search-tasks">Search tasks<input id="search-tasks" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search tasks" /></label>
           <label htmlFor="sort-tasks">Sort tasks
