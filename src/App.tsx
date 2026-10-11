@@ -131,7 +131,10 @@ function App() {
   const addAssignment = async (event: FormEvent) => {
     event.preventDefault();
     setFormError('');
-    if (!title || !course || !dueDate) return;
+    if (!title || !course || !dueDate) {
+      setFormError('Add a course, assignment title, and due date before saving.');
+      return;
+    }
     const { data, error } = await insertWithUser<{ id: string; title: string; course: string; due_date: string; completed: boolean }>('assignments', { title, course, due_date: dueDate, completed: false });
     if (error || !data) {
       setFormError(`Couldn't add assignment: ${error?.message ?? 'Please try again.'}`);
