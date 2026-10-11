@@ -12,7 +12,7 @@ const mockSession = vi.hoisted(() => ({
 vi.mock('./supabase', () => {
   const mockCourses = [{ name: 'CS410' }, { name: 'CS320' }, { name: 'ENG210' }];
   const mockAssignments = [
-    { id: '1', title: 'Database Design Report', course: 'CS410', due_date: '2026-08-12', completed: false },
+    { id: '1', title: 'Database Design Report', course: 'CS410', due_date: '2099-08-12', completed: false },
     { id: '2', title: 'Algorithms Homework', course: 'CS320', due_date: '2026-08-10', completed: false },
     { id: '3', title: 'Reading Reflection', course: 'ENG210', due_date: '2026-08-15', completed: true },
   ];
@@ -58,6 +58,35 @@ vi.mock('./supabase', () => {
           delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
         };
       },
+    },
+  };
+});
+
+vi.mock('./api', () => {
+  const mockCourses = [{ id: 'course-1', name: 'CS410' }, { id: 'course-2', name: 'CS320' }, { id: 'course-3', name: 'ENG210' }];
+  const mockAssignments = [
+    { id: '1', title: 'Database Design Report', course: 'CS410', due_date: '2099-08-12', completed: false },
+    { id: '2', title: 'Algorithms Homework', course: 'CS320', due_date: '2026-08-10', completed: false },
+    { id: '3', title: 'Reading Reflection', course: 'ENG210', due_date: '2026-08-15', completed: true },
+  ];
+
+  return {
+    apiRequest: async (_session: unknown, path: string, init: RequestInit = {}) => {
+      const method = init.method ?? 'GET';
+      const body = init.body ? JSON.parse(init.body as string) as Record<string, unknown> : {};
+
+      if (method === 'GET' && path === 'courses') return { data: mockCourses, error: null };
+      if (method === 'GET' && path === 'assignments') return { data: mockAssignments, error: null };
+      if (method === 'GET' && path === 'study-plan-items') return { data: [], error: null };
+      if (method === 'GET' && path === 'study-sessions') return { data: [], error: null };
+      if (method === 'POST' && path === 'courses') return { data: { id: 'course-new', name: body.name }, error: null };
+      if (method === 'POST' && path === 'assignments') {
+        if (mockState.assignmentInsertError) return { data: null, error: { message: 'Unable to save assignment' } };
+        return { data: { id: `mock-${Date.now()}`, ...body }, error: null };
+      }
+      if (method === 'POST' && path === 'study-plan-items') return { data: { id: 'plan-new', ...body }, error: null };
+      if (method === 'POST' && path === 'study-sessions') return { data: { id: 'session-new', ...body }, error: null };
+      return { data: null, error: null };
     },
   };
 });

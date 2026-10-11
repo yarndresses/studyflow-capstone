@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { apiRequest } from './api';
 import { supabase } from './supabase';
 
 type Assignment = {
@@ -62,26 +63,25 @@ function App() {
 
   const loadData = useCallback(async () => {
     if (!session?.user.id) return;
-    const userId = session.user.id;
     const [coursesRes, assignmentsRes, planRes, sessionsRes] = await Promise.all([
-      supabase.from('courses').select('name').eq('user_id', userId).order('created_at'),
-      supabase.from('assignments').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('study_plan_items').select('*').eq('user_id', userId).order('created_at'),
-      supabase.from('study_sessions').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      apiRequest<{ name: string }[]>(session, 'courses'),
+      apiRequest<{ id: string; title: string; course: string; due_date: string; completed: boolean }[]>(session, 'assignments'),
+      apiRequest<{ id: string; day: string; task: string }[]>(session, 'study-plan-items'),
+      apiRequest<{ id: string; date: string; duration: number }[]>(session, 'study-sessions'),
     ]);
     if (coursesRes.data) {
-      const names = coursesRes.data.map((r) => r.name as string);
+      const names = coursesRes.data.map((row) => row.name);
       setCourses(names);
       if (names.length > 0) setCourse(names[0]);
     }
     if (assignmentsRes.data) {
-      setAssignments(assignmentsRes.data.map((r) => ({ id: r.id as string, title: r.title as string, course: r.course as string, dueDate: r.due_date as string, completed: r.completed as boolean })));
+      setAssignments(assignmentsRes.data.map((row) => ({ id: row.id, title: row.title, course: row.course, dueDate: row.due_date, completed: row.completed })));
     }
     if (planRes.data) {
-      setStudyPlan(planRes.data.map((r) => ({ id: r.id as string, day: r.day as string, task: r.task as string })));
+      setStudyPlan(planRes.data.map((row) => ({ id: row.id, day: row.day, task: row.task })));
     }
     if (sessionsRes.data) {
-      setStudySessions(sessionsRes.data.map((r) => ({ id: r.id as string, date: r.date as string, duration: r.duration as number })));
+      setStudySessions(sessionsRes.data.map((row) => ({ id: row.id, date: row.date, duration: row.duration })));
     }
   }, [session]);
 
@@ -106,11 +106,11 @@ function App() {
     }
   };
 
-  const insertWithUser = async (table: 'courses' | 'assignments' | 'study_plan_items' | 'study_sessions', payload: Record<string, unknown>) => {
-    if (!session?.user.id) {
+  const insertWithUser = async <T,>(path: string, payload: Record<string, unknown>) => {
+    if (!session) {
       return { data: null, error: { message: 'You must be signed in to save this item.' } };
     }
-    return supabase.from(table).insert({ ...payload, user_id: session.user.id }).select().single();
+    return apiRequest<T>(session, path, { method: 'POST', body: JSON.stringify(payload) });
   };
 
   const addCourse = async (event: FormEvent) => {
@@ -118,7 +118,7 @@ function App() {
     setFormError('');
     const trimmed = courseInput.trim().toUpperCase();
     if (!trimmed || courses.includes(trimmed)) return;
-    const { error } = await insertWithUser('courses', { name: trimmed });
+    const { error } = await insertWithUser<{ id: string; name: string }>('courses', { name: trimmed });
     if (error) {
       setFormError(`Couldn't add course: ${error.message}`);
       return;
@@ -132,23 +132,25 @@ function App() {
     event.preventDefault();
     setFormError('');
     if (!title || !course || !dueDate) return;
-    const { data, error } = await insertWithUser('assignments', { title, course, due_date: dueDate, completed: false });
+    const { data, error } = await insertWithUser<{ id: string; title: string; course: string; due_date: string; completed: boolean }>('assignments', { title, course, due_date: dueDate, completed: false });
     if (error || !data) {
       setFormError(`Couldn't add assignment: ${error?.message ?? 'Please try again.'}`);
       return;
     }
-    setAssignments((current) => [{ id: data.id as string, title: data.title as string, course: data.course as string, dueDate: data.due_date as string, completed: false }, ...current]);
+    setAssignments((current) => [{ id: data.id, title: data.title, course: data.course, dueDate: data.due_date, completed: data.completed }, ...current]);
     setTitle('');
     setDueDate('');
   };
 
   const toggleComplete = async (id: string, completed: boolean) => {
-    await supabase.from('assignments').update({ completed: !completed }).eq('id', id);
+    if (!session) return;
+    await apiRequest(session, `assignments/${id}`, { method: 'PATCH', body: JSON.stringify({ completed: !completed }) });
     setAssignments((current) => current.map((a) => (a.id === id ? { ...a, completed: !a.completed } : a)));
   };
 
   const deleteAssignment = async (id: string) => {
-    await supabase.from('assignments').delete().eq('id', id);
+    if (!session) return;
+    await apiRequest(session, `assignments/${id}`, { method: 'DELETE' });
     setAssignments((current) => current.filter((a) => a.id !== id));
   };
 
@@ -156,12 +158,12 @@ function App() {
     event.preventDefault();
     setFormError('');
     if (!studyTask) return;
-    const { data, error } = await insertWithUser('study_plan_items', { day: studyDay, task: studyTask });
+    const { data, error } = await insertWithUser<{ id: string; day: string; task: string }>('study-plan-items', { day: studyDay, task: studyTask });
     if (error || !data) {
       setFormError(`Couldn't add study plan item: ${error?.message ?? 'Please try again.'}`);
       return;
     }
-    setStudyPlan((current) => [...current, { id: data.id as string, day: data.day as string, task: data.task as string }]);
+    setStudyPlan((current) => [...current, { id: data.id, day: data.day, task: data.task }]);
     setStudyTask('');
   };
 
@@ -169,12 +171,12 @@ function App() {
     event.preventDefault();
     setFormError('');
     if (!studySessionDate || !studyDuration) return;
-    const { data, error } = await insertWithUser('study_sessions', { date: studySessionDate, duration: Number(studyDuration) });
+    const { data, error } = await insertWithUser<{ id: string; date: string; duration: number }>('study-sessions', { date: studySessionDate, duration: Number(studyDuration) });
     if (error || !data) {
       setFormError(`Couldn't log study session: ${error?.message ?? 'Please try again.'}`);
       return;
     }
-    setStudySessions((current) => [{ id: data.id as string, date: data.date as string, duration: data.duration as number }, ...current]);
+    setStudySessions((current) => [{ id: data.id, date: data.date, duration: data.duration }, ...current]);
     setStudySessionDate('');
     setStudyDuration('');
   };

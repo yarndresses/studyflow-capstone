@@ -36,6 +36,8 @@ The Trello board can be found here: https://trello.com/invite/b/6a7a3221e12380ca
 - GitHub Actions for continuous integration and continuous delivery checks
 - Vitest and Testing Library for automated testing
 - Vite + React + TypeScript for rapid frontend development
+- Supabase Auth for user sign-up and sign-in
+- Neon Postgres and Neon Functions for user-scoped application data
 
 ## CI/CD
 
@@ -52,8 +54,12 @@ This ensures that new changes are checked before being merged or deployed.
 ## Project Structure
 
 - src/App.tsx: main application UI and feature logic
+- src/api.ts: authenticated client for the Neon API
 - src/styles.css: styling for the interface
 - src/App.test.tsx: automated tests for the first sprint stories
+- functions/studyflow-api.ts: authenticated Neon Function API
+- database/migrations/001_initial_schema.sql: StudyFlow Postgres schema
+- neon.ts: Neon Function deployment configuration
 - DESIGN_AND_TESTING.md: detailed design and testing documentation
 
 ## Local Development
@@ -67,6 +73,26 @@ This ensures that new changes are checked before being merged or deployed.
 4. Build for production:
    npm run build
 
+## Data Architecture
+
+Supabase provides authentication only. Once a user signs in, the React client sends the Supabase access token to the `studyflowapi` Neon Function. The function validates that JWT against Supabase's JWKS endpoint and uses the token subject as the `user_id` for all Neon Postgres queries.
+
+The Neon database contains `courses`, `assignments`, `study_plan_items`, and `study_sessions`. The function enforces ownership in every query, so the browser never receives a database connection string.
+
+## Environment Setup
+
+Create `.env.local` with the Supabase values, Neon values pulled by `neon link`, and the deployed function URL:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_publishable_anon_key
+SUPABASE_URL=https://your-project.supabase.co
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
+VITE_NEON_API_BASE_URL=https://your-branch-studyflowapi.compute.neon.tech
+```
+
+`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and `NEON_BRANCH` are managed by Neon and should remain local-only. Do not commit `.env.local`.
+
 ## Testing
 
 Automated tests cover core first-sprint functionality, including:
@@ -76,6 +102,12 @@ Automated tests cover core first-sprint functionality, including:
 - assignment completion
 - assignment filtering
 
-## Deployment Recommendation
+## Deployment
 
-A cloud-based deployment approach is recommended for this project. A practical option is to host the frontend on Vercel and connect it to a managed PostgreSQL service if the application is extended beyond the current prototype.
+The Neon Function is deployed with:
+
+```bash
+neon deploy --env .env.local
+```
+
+Host the Vite frontend on a static host such as Vercel. Configure its `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_NEON_API_BASE_URL` environment variables. Before deploying the frontend, append its exact `https://` URL to `ALLOWED_ORIGINS` in `.env.local`, then redeploy the Neon Function. Do not use `*` for allowed origins.
