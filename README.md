@@ -2,6 +2,8 @@
 
 StudyFlow is a solo capstone project designed to help students organise assignments, manage study plans, and track academic progress. The application provides a simple dashboard where users can create courses, add assignments, mark work as complete, and filter tasks by date or course.
 
+**Live application:** [https://studyflow-capstone.vercel.app/](https://studyflow-capstone.vercel.app/)
+
 ## Project Goals
 
 - Help students manage deadlines more effectively
@@ -110,4 +112,4 @@ The Neon Function is deployed with:
 neon deploy --env .env.local
 ```
 
-Host the Vite frontend on a static host such as Vercel. Configure its `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_NEON_API_BASE_URL` environment variables. Before deploying the frontend, append its exact `https://` URL to `ALLOWED_ORIGINS` in `.env.local`, then redeploy the Neon Function. Do not use `*` for allowed origins.
+The Vite frontend is deployed on Vercel at [https://studyflow-capstone.vercel.app/](https://studyflow-capstone.vercel.app/). Its `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_NEON_API_BASE_URL` values are configured as Vercel environment variables. The deployed URL is included in the Neon Function's `ALLOWED_ORIGINS`; do not use `*` for allowed origins.
